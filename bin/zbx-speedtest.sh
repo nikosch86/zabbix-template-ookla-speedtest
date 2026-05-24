@@ -40,7 +40,7 @@ cmd_run() {
   local args=(--accept-license --accept-gdpr --format=json)
   [[ "$sid" =~ ^[0-9]+$ ]] && args+=(--server-id="$sid")
 
-  install -d -m 755 "$(dirname "$CACHE")"
+  mkdir -p "$(dirname "$CACHE")"
   local tmp="${CACHE}.new"
   speedtest "${args[@]}" > "$tmp"
   mv "$tmp" "$CACHE"

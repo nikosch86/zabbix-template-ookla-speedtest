@@ -20,6 +20,10 @@ pick up another template.
 - `jq`
 - `zabbix-agent2` (or classic `zabbix-agent`)
 - `systemd` 235+
+- **A synchronised clock** — `chronyd` or `systemd-timesyncd` running.
+  The `speedtest.age` item compares the cache timestamp to the local
+  clock; if NTP later step-corrects a drifted clock, age values will
+  jump until the next refresh.
 
 ## Install (per location)
 
