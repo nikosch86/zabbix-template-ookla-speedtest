@@ -1,0 +1,3 @@
+# Installed to /etc/default/zabbix-speedtest
+# Optional: pin to a specific Ookla server ID. Leave unset for auto-select.
+# SPEEDTEST_SERVER_ID=23969
