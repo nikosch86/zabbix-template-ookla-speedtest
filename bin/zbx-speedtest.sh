@@ -24,12 +24,6 @@ require() {
   command -v "$1" >/dev/null 2>&1 || { echo "[ERR] missing: $1" >&2; exit 1; }
 }
 
-get() {
-  require jq
-  [[ -r "$CACHE" ]] || { echo "ZBX_NOTSUPPORTED: cache missing" >&2; exit 1; }
-  jq -r "$1" "$CACHE"
-}
-
 cmd_run() {
   local sid="${SPEEDTEST_SERVER_ID:-}"
   while [[ $# -gt 0 ]]; do
@@ -52,21 +46,36 @@ cmd_run() {
   mv "$tmp" "$CACHE"
 }
 
+ensure_cache() {
+  require jq
+  [[ -r "$CACHE" ]] || { echo "ZBX_NOTSUPPORTED: cache missing" >&2; exit 1; }
+  jq -e . "$CACHE" >/dev/null 2>&1 \
+    || { echo "ZBX_NOTSUPPORTED: cache unparseable" >&2; exit 1; }
+}
+
+get() { jq -r "$1" "$CACHE"; }
+
 case "${1:-}" in
   run)             shift; cmd_run "$@" ;;
-  download)        echo "$(( $(get '.download.bandwidth // 0') * 8 ))" ;;
-  upload)          echo "$(( $(get '.upload.bandwidth   // 0') * 8 ))" ;;
-  ping)            get '.ping.latency  // 0' ;;
-  jitter)          get '.ping.jitter   // 0' ;;
-  packetloss)      get '.packetLoss    // 0' ;;
-  server-id)       get '.server.id           // empty' ;;
-  server-name)     get '.server.name         // empty' ;;
-  server-location) get '.server.location     // empty' ;;
-  isp)             get '.isp                 // empty' ;;
-  external-ip)     get '.interface.externalIp // empty' ;;
-  age)             ts=$(get '.timestamp')
-                   then_s=$(date -u -d "$ts" +%s)
-                   echo $(( $(date -u +%s) - then_s )) ;;
   -h|--help|help)  usage ;;
+  download)        ensure_cache; echo "$(( $(get '.download.bandwidth // 0') * 8 ))" ;;
+  upload)          ensure_cache; echo "$(( $(get '.upload.bandwidth   // 0') * 8 ))" ;;
+  ping)            ensure_cache; get '.ping.latency  // 0' ;;
+  jitter)          ensure_cache; get '.ping.jitter   // 0' ;;
+  packetloss)      ensure_cache; get '.packetLoss    // 0' ;;
+  server-id)       ensure_cache; get '.server.id            // empty' ;;
+  server-name)     ensure_cache; get '.server.name          // empty' ;;
+  server-location) ensure_cache; get '.server.location      // empty' ;;
+  isp)             ensure_cache; get '.isp                  // empty' ;;
+  external-ip)     ensure_cache; get '.interface.externalIp // empty' ;;
+  age)             ensure_cache
+                   ts=$(get '.timestamp')
+                   [[ -n "$ts" && "$ts" != "null" ]] \
+                     || { echo "ZBX_NOTSUPPORTED: missing timestamp" >&2; exit 1; }
+                   then_s=$(date -u -d "$ts" +%s) \
+                     || { echo "ZBX_NOTSUPPORTED: bad timestamp" >&2; exit 1; }
+                   age=$(( $(date -u +%s) - then_s ))
+                   (( age < 0 )) && age=0
+                   echo "$age" ;;
   *)               usage; exit 2 ;;
 esac

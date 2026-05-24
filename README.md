@@ -43,8 +43,10 @@ sudo install -m 644 zabbix_agent2.d/speedtest.conf /etc/zabbix/zabbix_agent2.d/
 sudo systemctl restart zabbix-agent2
 ```
 
-Then on the Zabbix server, import `templates/template_speedtest.yaml` and
-link it to each host.
+Then on the Zabbix server, build the template per the [Template overview](#template-overview)
+below, export it to `templates/template_speedtest.yaml`, and link it to each host.
+(A reference YAML export will be committed once built — `templates/` is currently
+a placeholder.)
 
 ## Per-host pinning (optional)
 
