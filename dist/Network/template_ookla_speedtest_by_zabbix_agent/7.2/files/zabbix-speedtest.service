@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh Ookla speedtest cache
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=zabbix
+StateDirectory=zabbix-speedtest
+EnvironmentFile=-/etc/default/zabbix-speedtest
+ExecStart=/usr/local/bin/zbx-speedtest.sh run
+TimeoutStartSec=5min

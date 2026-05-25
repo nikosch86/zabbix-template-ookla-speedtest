@@ -1,26 +1,24 @@
 # Ookla speedtest by Zabbix agent
 
-Zabbix 7.2 template for monitoring ISP performance from each location using
-the official **Ookla Speedtest CLI**. A systemd timer runs the test
-periodically and caches the JSON result on disk; the local Zabbix agent
-serves cached fields via UserParameter — so the existing **active-agent**
-items already configured across your fleet just pick up another template.
+Monitor ISP performance from each host using the official **Ookla Speedtest
+CLI**. A systemd timer runs the test periodically on each host and caches
+the JSON result on disk; the local Zabbix agent serves cached fields via
+UserParameter, so active-agent items return in milliseconds and never time
+out.
 
-- Tested with Zabbix **7.2 LTS** on Debian/Ubuntu
-- Decoupled: the timer runs the test (~30s), the agent reads the JSON cache
-  in milliseconds — no agent timeouts
-- Per-host pinning of an Ookla server via `SPEEDTEST_SERVER_ID` (optional;
-  auto-select by default)
 - Cache-staleness watchdog item (`speedtest.age`) so a hung speedtest fires
   one alert, not five — the four performance triggers depend on it
 - Baseline-anomaly triggers (`baselinedev` / `baselinewma`) flag deviations
   from the past 7 days, independent of the static floors
+- Per-host pinning of an Ookla server via `SPEEDTEST_SERVER_ID` (optional;
+  auto-select by default)
 
 Author: [@nikosch86](https://github.com/nikosch86) ·
 Source: <https://github.com/nikosch86/zabbix-template-ookla-speedtest>
 
 ## Requirements
 
+- Zabbix **7.2 LTS** or later
 - [Ookla Speedtest CLI](https://www.speedtest.net/apps/cli) (**not** the
   abandoned `sivel/speedtest-cli` Python tool)
 - `jq`
@@ -31,33 +29,41 @@ Source: <https://github.com/nikosch86/zabbix-template-ookla-speedtest>
   clock; if NTP later step-corrects a drifted clock, age values will
   jump until the next refresh.
 
-## Install (per location)
+## Tested versions
+
+- Ookla Speedtest CLI **1.2.x**
+
+## Setup
+
+Run on each host that should be monitored:
 
 ```bash
 # Ookla CLI
 curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | sudo bash
 sudo apt install speedtest jq
 
-# Script
-sudo install -m 755 bin/zbx-speedtest.sh /usr/local/bin/zbx-speedtest.sh
+# Helper script
+sudo install -m 755 files/zbx-speedtest.sh /usr/local/bin/zbx-speedtest.sh
 
 # systemd timer
-sudo install -m 644 systemd/zabbix-speedtest.service /etc/systemd/system/
-sudo install -m 644 systemd/zabbix-speedtest.timer   /etc/systemd/system/
-sudo install -m 644 systemd/zabbix-speedtest.default /etc/default/zabbix-speedtest
+sudo install -m 644 files/zabbix-speedtest.service /etc/systemd/system/
+sudo install -m 644 files/zabbix-speedtest.timer   /etc/systemd/system/
+sudo install -m 644 files/zabbix-speedtest.default /etc/default/zabbix-speedtest
 sudo systemctl daemon-reload
 sudo systemctl enable --now zabbix-speedtest.timer
 
 # Agent UserParameters
-sudo install -m 644 zabbix_agent2.d/speedtest.conf /etc/zabbix/zabbix_agent2.d/
+sudo install -m 644 files/speedtest.conf /etc/zabbix/zabbix_agent2.d/
 sudo systemctl restart zabbix-agent2
 ```
 
-Then on the Zabbix server, import `template_speedtest.yaml`
-(*Data collection → Templates → Import*) and link
-**Ookla speedtest by Zabbix agent** to each host.
+Then in the Zabbix frontend: *Data collection → Templates → Import* the
+`template_ookla_speedtest_by_zabbix_agent.yaml`, then link **Ookla
+speedtest by Zabbix agent** to each monitored host. Adjust the
+`{$SPEEDTEST.*}` macros at the host level if the location's expected
+baseline differs from the defaults.
 
-## Per-host server pinning (optional)
+### Per-host server pinning (optional)
 
 Once you've watched auto-select for a few days, pin to the most consistent
 server. `speedtest -L` lists nearby candidates; verify a chosen one with
@@ -70,14 +76,9 @@ sudo systemctl start zabbix-speedtest.service
 
 Use `systemctl start zabbix-speedtest.service` — not `restart …timer` —
 since restarting the timer only re-arms its schedule, it doesn't trigger
-a fresh run. Confirm the new server stuck with
-`sudo -u zabbix /usr/local/bin/zbx-speedtest.sh server-id`.
+a fresh run.
 
-## Template overview
-
-Template name: **Ookla speedtest by Zabbix agent** (group `Templates/Network`).
-
-### Items
+## Items
 
 All items use **Zabbix agent (active)**. Numeric items apply *Discard
 unchanged with heartbeat* (6h for numerics, 24h for strings) so the polled
@@ -98,14 +99,10 @@ which must tick every poll for the staleness trigger to evaluate.
 | `speedtest.server.name` | character | — | 5m |
 | `speedtest.server.location` | character | — | 5m |
 
-The underlying data only changes every 2h (timer cadence), but the agent
-and timer clocks can't be aligned, so items poll every 5m. A refreshed
-cache becomes visible in Zabbix within ~5m; storage stays flat.
-
 `speedtest.wan.ip` stores the host's public IP (90d history). If that's
 sensitive in your environment, disable the item on the linked host.
 
-### Macros
+## Macros
 
 | Macro | Default | Description |
 |---|---|---|
@@ -116,7 +113,7 @@ sensitive in your environment, disable the item on the linked host.
 | `{$SPEEDTEST.PLOSS_HIGH}` | `1` | Ceiling for packet-loss alert, in %. |
 | `{$SPEEDTEST.DEV}` | `2.5` | Baseline deviation factor for anomaly triggers (standard deviations from the 7-day baseline; higher = less sensitive). |
 
-### Triggers
+## Triggers
 
 All eight triggers are suppressed while `Speedtest cache stale` is active,
 so a hung speedtest fires one alert instead of fanning out.
@@ -137,14 +134,8 @@ so a single flaky run can't fire them. The three anomaly triggers are
 `manual_close: YES` because baseline math can stay noisy after the
 underlying issue clears.
 
-### Dashboard
+## Dashboard
 
 The template ships a one-page `Speedtest` dashboard: SVG graphs for
 bandwidth, latency, and packet loss (24h window) plus single-value
 widgets for ISP, WAN IP, server name, location, and cache age.
-
-## Multi-location comparison
-
-Cross-host template graphs are gone in Zabbix 7. Build a **Dashboard** with
-one *graph widget* per location pinning the same items — that's the modern
-view of "ISP speed across all locations".
