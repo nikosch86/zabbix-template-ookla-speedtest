@@ -1,0 +1,416 @@
+zabbix_export:
+  version: '7.2'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Network
+  templates:
+    - uuid: f6496932ef23476ab57745dde90253ba
+      template: 'Ookla speedtest by Zabbix agent'
+      name: 'Ookla speedtest by Zabbix agent'
+      groups:
+        - name: Templates/Network
+      items:
+        - uuid: 942ef63258c24972b04e628a6b7846ee
+          name: 'Speedtest: Cache age'
+          type: ZABBIX_ACTIVE
+          key: speedtest.age
+          delay: 10m
+          units: s
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: 86772d615ac34b8ea3d433d88ae99c87
+              expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
+              name: 'Speedtest cache stale'
+              priority: AVERAGE
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: service
+                  value: internet
+        - uuid: 6fa7391d9c26491ea40c69c695c9ef94
+          name: 'Speedtest: Download'
+          type: ZABBIX_ACTIVE
+          key: speedtest.download
+          delay: 5m
+          units: bps
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          tags:
+            - tag: component
+              value: bandwidth
+          triggers:
+            - uuid: 1e5cf2c5281b43c6b0da6bf995f83931
+              expression: 'avg(/Ookla speedtest by Zabbix agent/speedtest.download,6h)<{$SPEEDTEST.DL_LOW}'
+              name: 'Download below floor'
+              priority: WARNING
+              dependencies:
+                - name: 'Speedtest cache stale'
+                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: service
+                  value: internet
+            - uuid: c5bb3a6e7c164b73bdc68ab007984535
+              expression: 'baselinedev(/Ookla speedtest by Zabbix agent/speedtest.download,6h:now/h,"d",7)>{$SPEEDTEST.DEV} and last(/Ookla speedtest by Zabbix agent/speedtest.download)<baselinewma(/Ookla speedtest by Zabbix agent/speedtest.download,6h:now/h,"d",7)'
+              recovery_mode: NONE
+              name: 'Download anomalously low'
+              priority: WARNING
+              manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: anomaly
+                - tag: service
+                  value: internet
+        - uuid: 88918063104640c3a80aeee1d324da33
+          name: 'Speedtest: ISP'
+          type: ZABBIX_ACTIVE
+          key: speedtest.isp
+          delay: 5m
+          history: 90d
+          value_type: CHAR
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 24h
+          tags:
+            - tag: component
+              value: peer
+        - uuid: 9eb30f15a39c4999bbc01c4fa53b6b7c
+          name: 'Speedtest: Jitter'
+          type: ZABBIX_ACTIVE
+          key: speedtest.jitter
+          delay: 5m
+          value_type: FLOAT
+          units: ms
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 891b5e6d49df417ca0199ca5adb2b03f
+          name: 'Speedtest: Packet Loss'
+          type: ZABBIX_ACTIVE
+          key: speedtest.packetloss
+          delay: 5m
+          value_type: FLOAT
+          units: '%'
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          tags:
+            - tag: component
+              value: quality
+          triggers:
+            - uuid: cf6d584eb0d74992a1d9d583d9234fce
+              expression: 'avg(/Ookla speedtest by Zabbix agent/speedtest.packetloss,6h)>{$SPEEDTEST.PLOSS_HIGH}'
+              name: 'Packet loss high'
+              priority: AVERAGE
+              dependencies:
+                - name: 'Speedtest cache stale'
+                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: service
+                  value: internet
+        - uuid: 4f6264a7b14848509b94f563d7584824
+          name: 'Speedtest: Ping'
+          type: ZABBIX_ACTIVE
+          key: speedtest.ping
+          delay: 5m
+          value_type: FLOAT
+          units: ms
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          tags:
+            - tag: component
+              value: latency
+          triggers:
+            - uuid: 72f369f469e641949162cda9685f107c
+              expression: 'avg(/Ookla speedtest by Zabbix agent/speedtest.ping,6h)>{$SPEEDTEST.LATENCY_HIGH}'
+              name: 'Latency high'
+              priority: WARNING
+              dependencies:
+                - name: 'Speedtest cache stale'
+                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: service
+                  value: internet
+            - uuid: 7bde2d8ae41240a39f589b1fe5683b73
+              expression: 'baselinedev(/Ookla speedtest by Zabbix agent/speedtest.ping,6h:now/h,"d",7)>{$SPEEDTEST.DEV} and last(/Ookla speedtest by Zabbix agent/speedtest.ping)>baselinewma(/Ookla speedtest by Zabbix agent/speedtest.ping,6h:now/h,"d",7)'
+              recovery_mode: NONE
+              name: 'Latency anomalously high'
+              priority: WARNING
+              manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: anomaly
+                - tag: service
+                  value: internet
+        - uuid: c104c1d46c624a4a823aa3c704a898d0
+          name: 'Speedtest: Server ID'
+          type: ZABBIX_ACTIVE
+          key: speedtest.server.id
+          delay: 5m
+          history: 90d
+          value_type: CHAR
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 24h
+          tags:
+            - tag: component
+              value: peer
+        - uuid: f9843c103ad044c396b6fc53dd30c5bf
+          name: 'Speedtest: Server Location'
+          type: ZABBIX_ACTIVE
+          key: speedtest.server.location
+          delay: 5m
+          history: 90d
+          value_type: CHAR
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 24h
+          tags:
+            - tag: component
+              value: peer
+        - uuid: 2c6104a3c3b648f0a66e85c332d9655d
+          name: 'Speedtest: Server Name'
+          type: ZABBIX_ACTIVE
+          key: speedtest.server.name
+          delay: 5m
+          history: 90d
+          value_type: CHAR
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 24h
+          tags:
+            - tag: component
+              value: peer
+        - uuid: 8d1c29e74eb44a59b520b42094dff37c
+          name: 'Speedtest: Upload'
+          type: ZABBIX_ACTIVE
+          key: speedtest.upload
+          delay: 5m
+          units: bps
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          tags:
+            - tag: component
+              value: bandwidth
+          triggers:
+            - uuid: 9da857f3fe404214835d5502db3e541d
+              expression: 'avg(/Ookla speedtest by Zabbix agent/speedtest.upload,6h)<{$SPEEDTEST.UL_LOW}'
+              name: 'Upload below floor'
+              priority: WARNING
+              dependencies:
+                - name: 'Speedtest cache stale'
+                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: service
+                  value: internet
+            - uuid: cc6ce0264637472582e72e0228f57198
+              expression: 'baselinedev(/Ookla speedtest by Zabbix agent/speedtest.upload,6h:now/h,"d",7)>{$SPEEDTEST.DEV} and last(/Ookla speedtest by Zabbix agent/speedtest.upload)<baselinewma(/Ookla speedtest by Zabbix agent/speedtest.upload,6h:now/h,"d",7)'
+              recovery_mode: NONE
+              name: 'Upload anomalously low'
+              priority: WARNING
+              manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: anomaly
+                - tag: service
+                  value: internet
+        - uuid: d5d0a134e9d7458aa6f41faed92db5ba
+          name: 'Speedtest: WAN IP'
+          type: ZABBIX_ACTIVE
+          key: speedtest.wan.ip
+          delay: 5m
+          history: 90d
+          value_type: CHAR
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 24h
+          tags:
+            - tag: component
+              value: peer
+      tags:
+        - tag: class
+          value: network
+        - tag: target
+          value: speedtest
+        - tag: vendor
+          value: ookla
+      macros:
+        - macro: '{$SPEEDTEST.DEV}'
+          value: '2.5'
+        - macro: '{$SPEEDTEST.DL_LOW}'
+          value: '100000000'
+        - macro: '{$SPEEDTEST.LATENCY_HIGH}'
+          value: '50'
+        - macro: '{$SPEEDTEST.MAX_AGE}'
+          value: '10800'
+        - macro: '{$SPEEDTEST.PLOSS_HIGH}'
+          value: '1'
+        - macro: '{$SPEEDTEST.UL_LOW}'
+          value: '8000000'
+      dashboards:
+        - uuid: 3384a72be40b4260a9e20ab4aabcb8d1
+          name: Speedtest
+          pages:
+            - widgets:
+                - type: svggraph
+                  name: Bandwidth
+                  width: '33'
+                  height: '6'
+                  fields:
+                    - type: STRING
+                      name: ds.0.color
+                      value: 00BFFF
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: speedtest.download
+                    - type: STRING
+                      name: ds.1.color
+                      value: 80FF00
+                    - type: STRING
+                      name: ds.1.items.0
+                      value: speedtest.upload
+                    - type: STRING
+                      name: reference
+                      value: XJXMA
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                    - type: STRING
+                      name: time_period.from
+                      value: now-24h
+                    - type: STRING
+                      name: time_period.to
+                      value: now
+                - type: svggraph
+                  name: 'Packet Loss'
+                  'y': '6'
+                  width: '33'
+                  height: '6'
+                  fields:
+                    - type: STRING
+                      name: ds.0.color
+                      value: FF465C
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: speedtest.packetloss
+                    - type: STRING
+                      name: reference
+                      value: JZQOX
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                    - type: STRING
+                      name: time_period.from
+                      value: now-24h
+                    - type: STRING
+                      name: time_period.to
+                      value: now
+                - type: svggraph
+                  name: Latency
+                  x: '33'
+                  width: '36'
+                  height: '6'
+                  fields:
+                    - type: STRING
+                      name: ds.0.color
+                      value: '666699'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: speedtest.ping
+                    - type: STRING
+                      name: reference
+                      value: HNEEG
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                    - type: STRING
+                      name: time_period.from
+                      value: now-24h
+                    - type: STRING
+                      name: time_period.to
+                      value: now
+                - type: item
+                  name: ISP
+                  x: '33'
+                  'y': '6'
+                  width: '12'
+                  height: '3'
+                  fields:
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Ookla speedtest by Zabbix agent'
+                        key: speedtest.isp
+                - type: item
+                  name: 'WAN IP'
+                  x: '33'
+                  'y': '9'
+                  width: '12'
+                  height: '3'
+                  fields:
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Ookla speedtest by Zabbix agent'
+                        key: speedtest.wan.ip
+                - type: item
+                  name: Server
+                  x: '45'
+                  'y': '6'
+                  width: '12'
+                  height: '3'
+                  fields:
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Ookla speedtest by Zabbix agent'
+                        key: speedtest.server.name
+                - type: item
+                  name: Location
+                  x: '45'
+                  'y': '9'
+                  width: '12'
+                  height: '3'
+                  fields:
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Ookla speedtest by Zabbix agent'
+                        key: speedtest.server.location
+                - type: item
+                  name: Age
+                  x: '57'
+                  'y': '6'
+                  width: '12'
+                  height: '3'
+                  fields:
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Ookla speedtest by Zabbix agent'
+                        key: speedtest.age

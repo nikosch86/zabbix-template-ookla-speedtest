@@ -47,37 +47,49 @@ sudo install -m 644 zabbix_agent2.d/speedtest.conf /etc/zabbix/zabbix_agent2.d/
 sudo systemctl restart zabbix-agent2
 ```
 
-Then on the Zabbix server, build the template per the [Template overview](#template-overview)
-below, export it to `templates/template_speedtest.yaml`, and link it to each host.
-(A reference YAML export will be committed once built — `templates/` is currently
-a placeholder.)
+Then on the Zabbix server, import `template_speedtest.yaml`
+(*Data collection → Templates → Import*) and link it to each host.
+The [Template overview](#template-overview) below summarises what's inside.
 
 ## Per-host pinning (optional)
 
 Once you've watched auto-select for a few days, pin to the most consistent
-server:
+server. `speedtest -L` lists nearby candidates; verify a chosen one with
+`speedtest -s <id>` before committing.
 
 ```bash
 echo 'SPEEDTEST_SERVER_ID=23969' | sudo tee /etc/default/zabbix-speedtest
-sudo systemctl restart zabbix-speedtest.timer
+sudo systemctl start zabbix-speedtest.service
 ```
 
-`speedtest -L` lists nearby servers.
+Use `systemctl start zabbix-speedtest.service` — not `restart …timer` —
+since restarting the timer only re-arms its schedule, it doesn't trigger
+a fresh run. Confirm the new server stuck with
+`sudo -u zabbix /usr/local/bin/zbx-speedtest.sh server-id`.
 
 ## Template overview
+
+Template name: **Ookla speedtest by Zabbix agent** (group `Templates/Network`).
 
 Items (all **Zabbix agent (active)**):
 
 | Key | Type | Units | Interval |
 |---|---|---|---|
-| `speedtest.download` | unsigned | `bps` | 2h |
-| `speedtest.upload` | unsigned | `bps` | 2h |
-| `speedtest.ping` | float | `ms` | 2h |
-| `speedtest.jitter` | float | `ms` | 2h |
-| `speedtest.packetloss` | float | `%` | 2h |
-| `speedtest.server.id` / `.name` / `.location` | character | — | 2h |
-| `speedtest.isp` / `speedtest.wan.ip` | character | — | 2h |
+| `speedtest.download` | unsigned | `bps` | 5m |
+| `speedtest.upload` | unsigned | `bps` | 5m |
+| `speedtest.ping` | float | `ms` | 5m |
+| `speedtest.jitter` | float | `ms` | 5m |
+| `speedtest.packetloss` | float | `%` | 5m |
+| `speedtest.server.id` / `.name` / `.location` | character | — | 5m |
+| `speedtest.isp` / `speedtest.wan.ip` | character | — | 5m |
 | `speedtest.age` | unsigned | `s` | **10m** (watchdog) |
+
+The data only changes every 2h (timer cadence), but agent and timer clocks
+can't be aligned, so items poll the cache every 5m and use *Discard
+unchanged with heartbeat* preprocessing (6h for numerics, 24h for strings)
+to avoid storing repeats. A refreshed cache becomes visible in Zabbix
+within ~5m; storage stays flat. `speedtest.age` is exempt — it must tick
+every poll for the staleness trigger to evaluate.
 
 Macros (host-overridable):
 
@@ -89,8 +101,9 @@ Macros (host-overridable):
 | `{$SPEEDTEST.LATENCY_HIGH}` | `50` | Latency alert (ms) |
 | `{$SPEEDTEST.PLOSS_HIGH}` | `1` | Packet loss alert (%) |
 
-Triggers use `avg(..., 3)` to require 3 consecutive bad runs (~6h) before
-firing, so one flaky test won't page.
+Triggers use `avg(/.../X, 6h)` so a single flaky run can't fire them. The
+four performance triggers depend on `Speedtest cache stale`, so a hung
+speedtest surfaces as one alert instead of five.
 
 ## Multi-location comparison
 
