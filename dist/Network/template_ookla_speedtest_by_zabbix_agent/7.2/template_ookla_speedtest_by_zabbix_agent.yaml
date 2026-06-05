@@ -35,7 +35,6 @@ zabbix_export:
           type: ZABBIX_ACTIVE
           key: speedtest.age
           delay: 10m
-          value_type: UNSIGNED
           units: s
           tags:
             - tag: component
@@ -69,6 +68,24 @@ zabbix_export:
             - tag: component
               value: bandwidth
           triggers:
+            - uuid: c5bb3a6e7c164b73bdc68ab007984535
+              expression: 'baselinedev(/Ookla speedtest by Zabbix agent/speedtest.download,6h:now/h,"d",7)>{$SPEEDTEST.DEV} and last(/Ookla speedtest by Zabbix agent/speedtest.download)<baselinewma(/Ookla speedtest by Zabbix agent/speedtest.download,6h:now/h,"d",7)*(1-{$SPEEDTEST.ANOMALY.MARGIN})'
+              name: 'Download anomalously low'
+              priority: WARNING
+              description: |
+                Latest download is both more than {$SPEEDTEST.DEV} standard deviations
+                below the 7-day baseline and at least {$SPEEDTEST.ANOMALY.MARGIN} (e.g.
+                20%) below the baseline weighted average, so trivial dips on a very stable
+                line do not alert. Auto-recovers when download returns toward baseline.
+                Suppressed while the cache is stale.
+              dependencies:
+                - name: 'Speedtest cache stale'
+                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
+              tags:
+                - tag: scope
+                  value: anomaly
+                - tag: service
+                  value: internet
             - uuid: 1e5cf2c5281b43c6b0da6bf995f83931
               expression: 'avg(/Ookla speedtest by Zabbix agent/speedtest.download,6h)<{$SPEEDTEST.DL_LOW}'
               name: 'Download below floor'
@@ -83,27 +100,6 @@ zabbix_export:
               tags:
                 - tag: scope
                   value: performance
-                - tag: service
-                  value: internet
-            - uuid: c5bb3a6e7c164b73bdc68ab007984535
-              expression: >-
-                baselinedev(/Ookla speedtest by Zabbix agent/speedtest.download,6h:now/h,"d",7)>{$SPEEDTEST.DEV}
-                and last(/Ookla speedtest by Zabbix agent/speedtest.download)<baselinewma(/Ookla speedtest by Zabbix agent/speedtest.download,6h:now/h,"d",7)
-              recovery_mode: NONE
-              name: 'Download anomalously low'
-              priority: WARNING
-              manual_close: 'YES'
-              description: |
-                Latest download is significantly below the 7-day baseline (>{$SPEEDTEST.DEV}
-                standard deviations). Recovery is manual-close because baseline math can
-                stay noisy after the underlying issue clears. Suppressed while the cache
-                is stale.
-              dependencies:
-                - name: 'Speedtest cache stale'
-                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
-              tags:
-                - tag: scope
-                  value: anomaly
                 - tag: service
                   value: internet
         - uuid: 88918063104640c3a80aeee1d324da33
@@ -180,6 +176,24 @@ zabbix_export:
             - tag: component
               value: latency
           triggers:
+            - uuid: 7bde2d8ae41240a39f589b1fe5683b73
+              expression: 'baselinedev(/Ookla speedtest by Zabbix agent/speedtest.ping,6h:now/h,"d",7)>{$SPEEDTEST.DEV} and last(/Ookla speedtest by Zabbix agent/speedtest.ping)>baselinewma(/Ookla speedtest by Zabbix agent/speedtest.ping,6h:now/h,"d",7)*(1+{$SPEEDTEST.ANOMALY.MARGIN})'
+              name: 'Latency anomalously high'
+              priority: WARNING
+              description: |
+                Latest ping is both more than {$SPEEDTEST.DEV} standard deviations above
+                the 7-day baseline and at least {$SPEEDTEST.ANOMALY.MARGIN} (e.g. 20%)
+                above the baseline weighted average, so trivial blips on a very stable
+                line do not alert. Auto-recovers when latency returns toward baseline.
+                Suppressed while the cache is stale.
+              dependencies:
+                - name: 'Speedtest cache stale'
+                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
+              tags:
+                - tag: scope
+                  value: anomaly
+                - tag: service
+                  value: internet
             - uuid: 72f369f469e641949162cda9685f107c
               expression: 'avg(/Ookla speedtest by Zabbix agent/speedtest.ping,6h)>{$SPEEDTEST.LATENCY_HIGH}'
               name: 'Latency high'
@@ -194,27 +208,6 @@ zabbix_export:
               tags:
                 - tag: scope
                   value: performance
-                - tag: service
-                  value: internet
-            - uuid: 7bde2d8ae41240a39f589b1fe5683b73
-              expression: >-
-                baselinedev(/Ookla speedtest by Zabbix agent/speedtest.ping,6h:now/h,"d",7)>{$SPEEDTEST.DEV}
-                and last(/Ookla speedtest by Zabbix agent/speedtest.ping)>baselinewma(/Ookla speedtest by Zabbix agent/speedtest.ping,6h:now/h,"d",7)
-              recovery_mode: NONE
-              name: 'Latency anomalously high'
-              priority: WARNING
-              manual_close: 'YES'
-              description: |
-                Latest ping is significantly above the 7-day baseline (>{$SPEEDTEST.DEV}
-                standard deviations). Recovery is manual-close because baseline math can
-                stay noisy after the underlying issue clears. Suppressed while the cache
-                is stale.
-              dependencies:
-                - name: 'Speedtest cache stale'
-                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
-              tags:
-                - tag: scope
-                  value: anomaly
                 - tag: service
                   value: internet
         - uuid: c104c1d46c624a4a823aa3c704a898d0
@@ -273,6 +266,24 @@ zabbix_export:
             - tag: component
               value: bandwidth
           triggers:
+            - uuid: cc6ce0264637472582e72e0228f57198
+              expression: 'baselinedev(/Ookla speedtest by Zabbix agent/speedtest.upload,6h:now/h,"d",7)>{$SPEEDTEST.DEV} and last(/Ookla speedtest by Zabbix agent/speedtest.upload)<baselinewma(/Ookla speedtest by Zabbix agent/speedtest.upload,6h:now/h,"d",7)*(1-{$SPEEDTEST.ANOMALY.MARGIN})'
+              name: 'Upload anomalously low'
+              priority: WARNING
+              description: |
+                Latest upload is both more than {$SPEEDTEST.DEV} standard deviations
+                below the 7-day baseline and at least {$SPEEDTEST.ANOMALY.MARGIN} (e.g.
+                20%) below the baseline weighted average, so trivial dips on a very stable
+                line do not alert. Auto-recovers when upload returns toward baseline.
+                Suppressed while the cache is stale.
+              dependencies:
+                - name: 'Speedtest cache stale'
+                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
+              tags:
+                - tag: scope
+                  value: anomaly
+                - tag: service
+                  value: internet
             - uuid: 9da857f3fe404214835d5502db3e541d
               expression: 'avg(/Ookla speedtest by Zabbix agent/speedtest.upload,6h)<{$SPEEDTEST.UL_LOW}'
               name: 'Upload below floor'
@@ -287,27 +298,6 @@ zabbix_export:
               tags:
                 - tag: scope
                   value: performance
-                - tag: service
-                  value: internet
-            - uuid: cc6ce0264637472582e72e0228f57198
-              expression: >-
-                baselinedev(/Ookla speedtest by Zabbix agent/speedtest.upload,6h:now/h,"d",7)>{$SPEEDTEST.DEV}
-                and last(/Ookla speedtest by Zabbix agent/speedtest.upload)<baselinewma(/Ookla speedtest by Zabbix agent/speedtest.upload,6h:now/h,"d",7)
-              recovery_mode: NONE
-              name: 'Upload anomalously low'
-              priority: WARNING
-              manual_close: 'YES'
-              description: |
-                Latest upload is significantly below the 7-day baseline (>{$SPEEDTEST.DEV}
-                standard deviations). Recovery is manual-close because baseline math can
-                stay noisy after the underlying issue clears. Suppressed while the cache
-                is stale.
-              dependencies:
-                - name: 'Speedtest cache stale'
-                  expression: 'last(/Ookla speedtest by Zabbix agent/speedtest.age)>{$SPEEDTEST.MAX_AGE}'
-              tags:
-                - tag: scope
-                  value: anomaly
                 - tag: service
                   value: internet
         - uuid: d5d0a134e9d7458aa6f41faed92db5ba
@@ -332,6 +322,9 @@ zabbix_export:
         - tag: vendor
           value: ookla
       macros:
+        - macro: '{$SPEEDTEST.ANOMALY.MARGIN}'
+          value: '0.2'
+          description: 'Minimum fractional move from the 7-day baseline average required, on top of the {$SPEEDTEST.DEV} std-dev test, before an anomaly trigger fires. 0.2 = 20%; ignores trivial dips on a very stable line.'
         - macro: '{$SPEEDTEST.DEV}'
           value: '2.5'
           description: 'Baseline deviation factor for anomaly triggers (number of standard deviations from the 7-day baseline). Higher = less sensitive.'
@@ -365,25 +358,25 @@ zabbix_export:
                       value: 00BFFF
                     - type: STRING
                       name: ds.0.items.0
-                      value: speedtest.download
+                      value: 'Speedtest: Download'
+                    - type: INTEGER
+                      name: ds.0.missingdatafunc
+                      value: '1'
                     - type: STRING
                       name: ds.1.color
                       value: 80FF00
                     - type: STRING
                       name: ds.1.items.0
-                      value: speedtest.upload
+                      value: 'Speedtest: Upload'
+                    - type: INTEGER
+                      name: ds.1.missingdatafunc
+                      value: '1'
                     - type: STRING
                       name: reference
                       value: XJXMA
                     - type: INTEGER
                       name: righty
                       value: '0'
-                    - type: STRING
-                      name: time_period.from
-                      value: now-24h
-                    - type: STRING
-                      name: time_period.to
-                      value: now
                 - type: svggraph
                   name: 'Packet Loss'
                   'y': '6'
@@ -395,19 +388,16 @@ zabbix_export:
                       value: FF465C
                     - type: STRING
                       name: ds.0.items.0
-                      value: speedtest.packetloss
+                      value: 'Speedtest: Packet Loss'
+                    - type: INTEGER
+                      name: ds.0.missingdatafunc
+                      value: '1'
                     - type: STRING
                       name: reference
                       value: JZQOX
                     - type: INTEGER
                       name: righty
                       value: '0'
-                    - type: STRING
-                      name: time_period.from
-                      value: now-24h
-                    - type: STRING
-                      name: time_period.to
-                      value: now
                 - type: svggraph
                   name: Latency
                   x: '33'
@@ -419,19 +409,16 @@ zabbix_export:
                       value: '666699'
                     - type: STRING
                       name: ds.0.items.0
-                      value: speedtest.ping
+                      value: 'Speedtest: Ping'
+                    - type: INTEGER
+                      name: ds.0.missingdatafunc
+                      value: '1'
                     - type: STRING
                       name: reference
                       value: HNEEG
                     - type: INTEGER
                       name: righty
                       value: '0'
-                    - type: STRING
-                      name: time_period.from
-                      value: now-24h
-                    - type: STRING
-                      name: time_period.to
-                      value: now
                 - type: item
                   name: ISP
                   x: '33'
@@ -444,6 +431,9 @@ zabbix_export:
                       value:
                         host: 'Ookla speedtest by Zabbix agent'
                         key: speedtest.isp
+                    - type: INTEGER
+                      name: value_size
+                      value: '20'
                 - type: item
                   name: 'WAN IP'
                   x: '33'
@@ -456,6 +446,9 @@ zabbix_export:
                       value:
                         host: 'Ookla speedtest by Zabbix agent'
                         key: speedtest.wan.ip
+                    - type: INTEGER
+                      name: value_size
+                      value: '20'
                 - type: item
                   name: Server
                   x: '45'
@@ -468,6 +461,9 @@ zabbix_export:
                       value:
                         host: 'Ookla speedtest by Zabbix agent'
                         key: speedtest.server.name
+                    - type: INTEGER
+                      name: value_size
+                      value: '20'
                 - type: item
                   name: Location
                   x: '45'
@@ -480,6 +476,9 @@ zabbix_export:
                       value:
                         host: 'Ookla speedtest by Zabbix agent'
                         key: speedtest.server.location
+                    - type: INTEGER
+                      name: value_size
+                      value: '20'
                 - type: item
                   name: Age
                   x: '57'
@@ -492,3 +491,6 @@ zabbix_export:
                       value:
                         host: 'Ookla speedtest by Zabbix agent'
                         key: speedtest.age
+                    - type: INTEGER
+                      name: value_size
+                      value: '20'

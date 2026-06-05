@@ -112,6 +112,7 @@ sensitive in your environment, disable the item on the linked host.
 | `{$SPEEDTEST.LATENCY_HIGH}` | `50` | Ceiling for ping alert, in ms. |
 | `{$SPEEDTEST.PLOSS_HIGH}` | `1` | Ceiling for packet-loss alert, in %. |
 | `{$SPEEDTEST.DEV}` | `2.5` | Baseline deviation factor for anomaly triggers (standard deviations from the 7-day baseline; higher = less sensitive). |
+| `{$SPEEDTEST.ANOMALY.MARGIN}` | `0.2` | Minimum fractional move from the 7-day baseline average required (on top of `{$SPEEDTEST.DEV}` σ) before an anomaly trigger fires. `0.2` = 20%; stops trivial dips on a very stable line from alerting. |
 
 ## Triggers
 
@@ -125,17 +126,27 @@ so a hung speedtest fires one alert instead of fanning out.
 | Upload below floor | Warning | `avg(speedtest.upload, 6h) < {$SPEEDTEST.UL_LOW}` |
 | Latency high | Warning | `avg(speedtest.ping, 6h) > {$SPEEDTEST.LATENCY_HIGH}` |
 | Packet loss high | Average | `avg(speedtest.packetloss, 6h) > {$SPEEDTEST.PLOSS_HIGH}` |
-| Download anomalously low | Warning | `baselinedev(download, 6h:now/h, "d", 7) > {$SPEEDTEST.DEV} and last < baselinewma` |
-| Upload anomalously low | Warning | `baselinedev(upload, 6h:now/h, "d", 7) > {$SPEEDTEST.DEV} and last < baselinewma` |
-| Latency anomalously high | Warning | `baselinedev(ping, 6h:now/h, "d", 7) > {$SPEEDTEST.DEV} and last > baselinewma` |
+| Download anomalously low | Warning | `baselinedev(download, …) > {$SPEEDTEST.DEV} and last < baselinewma * (1 - {$SPEEDTEST.ANOMALY.MARGIN})` |
+| Upload anomalously low | Warning | `baselinedev(upload, …) > {$SPEEDTEST.DEV} and last < baselinewma * (1 - {$SPEEDTEST.ANOMALY.MARGIN})` |
+| Latency anomalously high | Warning | `baselinedev(ping, …) > {$SPEEDTEST.DEV} and last > baselinewma * (1 + {$SPEEDTEST.ANOMALY.MARGIN})` |
 
 The four performance triggers (`*below floor` / `*high`) average over 6h
-so a single flaky run can't fire them. The three anomaly triggers are
-`manual_close: YES` because baseline math can stay noisy after the
-underlying issue clears.
+so a single flaky run can't fire them. The three anomaly triggers require
+**both** a `{$SPEEDTEST.DEV}`-sigma deviation **and** at least a
+`{$SPEEDTEST.ANOMALY.MARGIN}` (20%) move from the 7-day baseline average,
+so a trivial dip on a very stable connection stays quiet. They auto-recover
+once the metric returns toward baseline.
 
 ## Dashboard
 
 The template ships a one-page `Speedtest` dashboard: SVG graphs for
-bandwidth, latency, and packet loss (24h window) plus single-value
-widgets for ISP, WAN IP, server name, location, and cache age.
+bandwidth, latency, and packet loss plus single-value widgets for ISP,
+WAN IP, server name, location, and cache age. The graphs follow the
+dashboard's time-period selector (top right) and connect across gaps, so
+the sparse per-run samples render as a continuous line.
+
+Because a speedtest runs only every ~2h, set the time-period selector to
+a wider range (e.g. **Last 7 days**) for a meaningful view — at the
+Zabbix default of *Last 1 hour* the graphs look empty or show a single
+dot. Zabbix remembers the selected range per user; a default range cannot
+be baked into the dashboard.
