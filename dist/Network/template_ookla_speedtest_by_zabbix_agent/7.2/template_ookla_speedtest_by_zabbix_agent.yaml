@@ -414,6 +414,15 @@ zabbix_export:
                       name: ds.0.missingdatafunc
                       value: '1'
                     - type: STRING
+                      name: ds.1.color
+                      value: FFB300
+                    - type: STRING
+                      name: ds.1.items.0
+                      value: 'Speedtest: Jitter'
+                    - type: INTEGER
+                      name: ds.1.missingdatafunc
+                      value: '1'
+                    - type: STRING
                       name: reference
                       value: HNEEG
                     - type: INTEGER

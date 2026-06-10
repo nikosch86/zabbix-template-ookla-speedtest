@@ -140,13 +140,18 @@ once the metric returns toward baseline.
 ## Dashboard
 
 The template ships a one-page `Speedtest` dashboard: SVG graphs for
-bandwidth, latency, and packet loss plus single-value widgets for ISP,
-WAN IP, server name, location, and cache age. The graphs follow the
-dashboard's time-period selector (top right) and connect across gaps, so
-the sparse per-run samples render as a continuous line.
+bandwidth, latency (ping and jitter), and packet loss plus single-value
+widgets for ISP, WAN IP, server name, location, and cache age. The graphs
+follow the dashboard's time-period selector (top right) and connect across
+gaps, so the sparse per-run samples render as a continuous line.
 
 Because a speedtest runs only every ~2h, set the time-period selector to
 a wider range (e.g. **Last 7 days**) for a meaningful view — at the
 Zabbix default of *Last 1 hour* the graphs look empty or show a single
 dot. Zabbix remembers the selected range per user; a default range cannot
 be baked into the dashboard.
+
+For a fleet-wide view across every host linked to the template, the
+source repository ships `bin/zbx-speedtest-fleet-dashboard.sh`, which
+creates a global **Speedtest fleet** dashboard via the Zabbix API (global
+dashboards cannot be carried in a template export).

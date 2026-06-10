@@ -15,6 +15,9 @@ items already configured across your fleet just pick up another template.
   one alert, not five — the four performance triggers depend on it
 - Baseline-anomaly triggers (`baselinedev` / `baselinewma`) flag deviations
   from the past 7 days, independent of the static floors
+- Fleet dashboard script creates a global dashboard aggregating every host
+  linked to the template — Zabbix can't ship global dashboards inside a
+  template export
 
 Author: [@nikosch86](https://github.com/nikosch86) ·
 Source: <https://github.com/nikosch86/zabbix-template-ookla-speedtest>
@@ -143,10 +146,10 @@ once the metric returns toward baseline.
 ### Dashboard
 
 The template ships a one-page `Speedtest` dashboard: SVG graphs for
-bandwidth, latency, and packet loss plus single-value widgets for ISP,
-WAN IP, server name, location, and cache age. The graphs follow the
-dashboard's time-period selector (top right) and connect across gaps, so
-the sparse per-run samples render as a continuous line.
+bandwidth, latency (ping and jitter), and packet loss plus single-value
+widgets for ISP, WAN IP, server name, location, and cache age. The graphs
+follow the dashboard's time-period selector (top right) and connect across
+gaps, so the sparse per-run samples render as a continuous line.
 
 Because a speedtest runs only every ~2h, set the time-period selector to
 a wider range (e.g. **Last 7 days**) for a meaningful view — at the
@@ -154,8 +157,30 @@ Zabbix default of *Last 1 hour* the graphs look empty or show a single
 dot. Zabbix remembers the selected range per user; a default range cannot
 be baked into the dashboard.
 
-## Multi-location comparison
+## Fleet dashboard (all hosts)
 
-Cross-host template graphs are gone in Zabbix 7. Build a **Dashboard** with
-one *graph widget* per location pinning the same items — that's the modern
-view of "ISP speed across all locations".
+Cross-host template graphs are gone in Zabbix 7, and global dashboards
+cannot be carried in a template export — so the fleet-wide view ships as
+a script that creates it through the Zabbix API:
+
+```bash
+ZABBIX_URL=https://zabbix.example.com \
+ZABBIX_API_TOKEN=xxxx \
+./bin/zbx-speedtest-fleet-dashboard.sh
+```
+
+Create the token under *Users → API tokens* for a user with write access
+to dashboards; needs `curl` and `jq`. The script creates a public
+**Speedtest fleet** dashboard with:
+
+- **Latest results** — one row per host: download, upload, ping, jitter,
+  packet loss, ISP, server, and cache age, sorted by download speed
+- **Download / Upload / Latency / Packet loss** graphs overlaying every
+  host, with ping and jitter combined in the latency graph
+
+The widgets match hosts by wildcard pattern against the template's item
+names, so a host linked to the template later shows up automatically —
+the dashboard needs no maintenance as the fleet grows. If a dashboard
+named `Speedtest fleet` already exists, the script refuses to touch it;
+pass `--replace` to overwrite its widget layout. As with the host
+dashboard, pick a wide time range (e.g. **Last 7 days**).
