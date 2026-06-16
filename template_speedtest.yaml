@@ -1,7 +1,7 @@
 zabbix_export:
   version: '7.2'
   template_groups:
-    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+    - uuid: 1657fe4debec4e409b76efce07288599
       name: Templates/Network
   templates:
     - uuid: f6496932ef23476ab57745dde90253ba
